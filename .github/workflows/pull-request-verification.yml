@@ -143,3 +143,83 @@ jobs:
         || steps.filter.outputs.modified_files != 'LICENSE'
         || steps.filter.outputs.deleted_files != 'README.md'
       run: exit 1
+
+  test-monorepo-structure:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Create test files
+      run: |
+        # Create client files
+        mkdir -p src/components
+        touch src/components/Button.tsx
+        mkdir -p src/pages
+        touch src/pages/Home.tsx
+        touch tsconfig.src.json
+        touch vite.config.ts
+
+        # Create server files
+        mkdir -p srv
+        touch srv/main.ts
+        touch srv/app.module.ts
+        mkdir -p prisma
+        touch prisma/schema.prisma
+        touch tsconfig.srv.json
+        touch nest-cli.json
+
+        # Create shared files
+        mkdir -p .github/workflows
+        touch .github/workflows/build-xmu-ci.yml
+
+        # Add all files to git
+        git add .
+
+    - uses: ./
+      id: filter
+      with:
+        base: HEAD
+        filters: |
+          client:
+            pattern:
+              - 'src/**'
+              - 'tsconfig.src.json'
+              - 'vite.config.ts'
+          server:
+            pattern:
+              - 'srv/**'
+              - 'prisma/**'
+              - 'tsconfig.srv.json'
+              - 'tsconfig.srv.build.json'
+              - 'nest-cli.json'
+          all:
+            pattern:
+              - '**'
+              - '*'
+            ignore:
+              - 'src/**'
+              - 'srv/**'
+              - 'prisma/**'
+              - 'nest-cli.json'
+              - 'tsconfig.src.json'
+              - 'vite.config.ts'
+              - 'tsconfig.srv.json'
+              - 'tsconfig.srv.build.json'
+
+    - name: Test client files
+      run: |
+        echo "Client files: ${{ steps.filter.outputs.client_files }}"
+        [[ "${{ steps.filter.outputs.client }}" == "true" ]] || exit 1
+        [[ "${{ steps.filter.outputs.client_count }}" == "4" ]] || exit 1
+
+    - name: Test server files
+      run: |
+        echo "Server files: ${{ steps.filter.outputs.server_files }}"
+        [[ "${{ steps.filter.outputs.server }}" == "true" ]] || exit 1
+        [[ "${{ steps.filter.outputs.server_count }}" == "5" ]] || exit 1
+
+    - name: Test shared files
+      run: |
+        echo "All files: ${{ steps.filter.outputs.all_files }}"
+        [[ "${{ steps.filter.outputs.all }}" == "true" ]] || exit 1
+        [[ "${{ steps.filter.outputs.all_count }}" == "1" ]] || exit 1
+        [[ "${{ steps.filter.outputs.all_files }}" == ".github/workflows/build-xmu-ci.yml" ]] || exit 1
