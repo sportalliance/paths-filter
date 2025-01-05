@@ -212,6 +212,156 @@ describe('matching specific change status', () => {
   })
 })
 
+describe('ignore pattern tests', () => {
+  test('matches files but ignores specified patterns', () => {
+    const yaml = `
+    src:
+      pattern: "src/**/*.{js,ts}"
+      ignore: "src/**/*.test.{js,ts}"
+    `
+    const filter = new Filter(yaml)
+
+    const files = modified([
+      'src/app/module/file.js',
+      'src/app/module/file.test.js',
+      'src/utils/helper.ts',
+      'src/utils/helper.test.ts'
+    ])
+
+    const match = filter.match(files)
+
+    expect(match.src).toHaveLength(2)
+    expect(match.src.map(f => f.filename)).toEqual([
+      'src/app/module/file.js',
+      'src/utils/helper.ts'
+    ])
+  })
+
+  test('supports multiple ignore patterns', () => {
+    const yaml = `
+    src:
+      pattern: "**/*.{js,ts}"
+      ignore:
+        - "**/*.test.{js,ts}"
+        - "**/node_modules/**"
+    `
+    const filter = new Filter(yaml)
+
+    const files = modified([
+      'src/file.js',
+      'src/file.test.js',
+      'node_modules/lib/file.js',
+      'src/utils.ts',
+      'src/utils.test.ts'
+    ])
+
+    const match = filter.match(files)
+
+    expect(match.src).toHaveLength(2)
+    expect(match.src.map(f => f.filename)).toEqual([
+      'src/file.js',
+      'src/utils.ts'
+    ])
+  })
+})
+
+describe('complex patterns and ignore tests', () => {
+  test('matches monorepo structure with client, server and shared files', () => {
+    const yaml = `
+    client:
+      pattern:
+        - 'src/**'
+        - 'tsconfig.src.json'
+        - 'vite.config.ts'
+    server:
+      pattern:
+        - 'srv/**'
+        - 'prisma/**'
+        - 'tsconfig.srv.json'
+        - 'tsconfig.srv.build.json'
+        - 'nest-cli.json'
+    all:
+      pattern:
+        - '**'
+        - '*'
+      ignore:
+        - 'src/**'
+        - 'srv/**'
+        - 'prisma/**'
+        - 'nest-cli.json'
+        - 'tsconfig.src.json'
+        - 'vite.config.ts'
+        - 'tsconfig.srv.json'
+        - 'tsconfig.srv.build.json'
+    `
+    const filter = new Filter(yaml)
+
+    // Client files
+    const clientFiles = modified([
+      'src/components/Button.tsx',
+      'src/pages/Home.tsx',
+      'tsconfig.src.json',
+      'vite.config.ts'
+    ])
+
+    // Server files
+    const serverFiles = modified([
+      'srv/main.ts',
+      'srv/app.module.ts',
+      'prisma/schema.prisma',
+      'tsconfig.srv.json',
+      'nest-cli.json'
+    ])
+
+    // Shared/root files that should match 'all' but not client or server
+    const sharedFiles = modified([
+      'README.md',
+      'package.json',
+      '.gitignore',
+      '.env',
+      'docker-compose.yml'
+    ])
+
+    // Test client files
+    const clientMatch = filter.match(clientFiles)
+    expect(clientMatch.client).toHaveLength(4)
+    expect(clientMatch.server).toHaveLength(0)
+    expect(clientMatch.all).toHaveLength(0)
+    expect(clientMatch.client.map(f => f.filename)).toEqual([
+      'src/components/Button.tsx',
+      'src/pages/Home.tsx',
+      'tsconfig.src.json',
+      'vite.config.ts'
+    ])
+
+    // Test server files
+    const serverMatch = filter.match(serverFiles)
+    expect(serverMatch.client).toHaveLength(0)
+    expect(serverMatch.server).toHaveLength(5)
+    expect(serverMatch.all).toHaveLength(0)
+    expect(serverMatch.server.map(f => f.filename)).toEqual([
+      'srv/main.ts',
+      'srv/app.module.ts',
+      'prisma/schema.prisma',
+      'tsconfig.srv.json',
+      'nest-cli.json'
+    ])
+
+    // Test shared files
+    const sharedMatch = filter.match(sharedFiles)
+    expect(sharedMatch.client).toHaveLength(0)
+    expect(sharedMatch.server).toHaveLength(0)
+    expect(sharedMatch.all).toHaveLength(5)
+    expect(sharedMatch.all.map(f => f.filename)).toEqual([
+      'README.md',
+      'package.json',
+      '.gitignore',
+      '.env',
+      'docker-compose.yml'
+    ])
+  })
+})
+
 function modified(paths: string[]): File[] {
   return paths.map(filename => {
     return {filename, status: ChangeStatus.Modified}

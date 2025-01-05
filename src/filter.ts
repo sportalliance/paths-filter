@@ -6,13 +6,25 @@ import {File, ChangeStatus} from './file'
 interface FilterYaml {
   [name: string]: FilterItemYaml
 }
+
+interface FilterPattern {
+  pattern: string | string[]
+  ignore?: string | string[]
+}
+
 type FilterItemYaml =
   | string // Filename pattern, e.g. "path/to/*.js"
-  | {[changeTypes: string]: string | string[]} // Change status and filename, e.g. added|modified: "path/to/*.js"
+  | FilterPattern // Pattern with ignore option
+  | {[changeTypes: string]: string | string[]} // Change status and filename
   | FilterItemYaml[] // Supports referencing another rule via YAML anchor
 
 // Minimatch options used in all matchers
-const MatchOptions = {
+interface MatchOptions {
+  dot: boolean
+  ignore?: string | string[]
+}
+
+const MatchOptions: MatchOptions = {
   dot: true
 }
 
@@ -124,6 +136,18 @@ export class Filter {
     }
 
     if (typeof item === 'object') {
+      if ('pattern' in item) {
+        // Handle object with pattern and ignore
+        const options: MatchOptions = {...MatchOptions}
+        if (item.ignore) {
+          options.ignore = item.ignore
+        }
+        return [{
+          status: undefined,
+          isMatch: picomatch(item.pattern, options)
+        }]
+      }
+
       return Object.entries(item).map(([key, pattern]) => {
         if (typeof key !== 'string' || (typeof pattern !== 'string' && !Array.isArray(pattern))) {
           this.throwInvalidFormatError(
