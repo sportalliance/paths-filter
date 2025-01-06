@@ -56,7 +56,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Filter = exports.isPredicateQuantifier = exports.SUPPORTED_PREDICATE_QUANTIFIERS = exports.PredicateQuantifier = void 0;
 const jsyaml = __importStar(__nccwpck_require__(1917));
 const picomatch_1 = __importDefault(__nccwpck_require__(8569));
-// Minimatch options used in all matchers
 const MatchOptions = {
     dot: true
 };
@@ -145,6 +144,17 @@ class Filter {
             return [{ status: undefined, isMatch: (0, picomatch_1.default)(item, MatchOptions) }];
         }
         if (typeof item === 'object') {
+            if ('pattern' in item) {
+                // Handle object with pattern and ignore
+                const options = { ...MatchOptions };
+                if (item.ignore) {
+                    options.ignore = item.ignore;
+                }
+                return [{
+                        status: undefined,
+                        isMatch: (0, picomatch_1.default)(item.pattern, options)
+                    }];
+            }
             return Object.entries(item).map(([key, pattern]) => {
                 if (typeof key !== 'string' || (typeof pattern !== 'string' && !Array.isArray(pattern))) {
                     this.throwInvalidFormatError(`Expected [key:string]= pattern:string | string[], but [${key}:${typeof key}]= ${pattern}:${typeof pattern} found`);

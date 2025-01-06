@@ -142,10 +142,12 @@ export class Filter {
         if (item.ignore) {
           options.ignore = item.ignore
         }
-        return [{
-          status: undefined,
-          isMatch: picomatch(item.pattern, options)
-        }]
+        return [
+          {
+            status: undefined,
+            isMatch: picomatch(item.pattern, options)
+          }
+        ]
       }
 
       return Object.entries(item).map(([key, pattern]) => {

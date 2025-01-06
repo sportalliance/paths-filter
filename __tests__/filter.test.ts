@@ -231,10 +231,7 @@ describe('ignore pattern tests', () => {
     const match = filter.match(files)
 
     expect(match.src).toHaveLength(2)
-    expect(match.src.map(f => f.filename)).toEqual([
-      'src/app/module/file.js',
-      'src/utils/helper.ts'
-    ])
+    expect(match.src.map(f => f.filename)).toEqual(['src/app/module/file.js', 'src/utils/helper.ts'])
   })
 
   test('supports multiple ignore patterns', () => {
@@ -258,10 +255,7 @@ describe('ignore pattern tests', () => {
     const match = filter.match(files)
 
     expect(match.src).toHaveLength(2)
-    expect(match.src.map(f => f.filename)).toEqual([
-      'src/file.js',
-      'src/utils.ts'
-    ])
+    expect(match.src.map(f => f.filename)).toEqual(['src/file.js', 'src/utils.ts'])
   })
 })
 
@@ -314,13 +308,7 @@ describe('complex patterns and ignore tests', () => {
     ])
 
     // Shared/root files that should match 'all' but not client or server
-    const sharedFiles = modified([
-      'README.md',
-      'package.json',
-      '.gitignore',
-      '.env',
-      'docker-compose.yml'
-    ])
+    const sharedFiles = modified(['README.md', 'package.json', '.gitignore', '.env', 'docker-compose.yml'])
 
     // Test client files
     const clientMatch = filter.match(clientFiles)
