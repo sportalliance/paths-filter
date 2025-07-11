@@ -598,10 +598,10 @@ async function run() {
         }
         const filterConfig = { predicateQuantifier };
         const filter = new filter_1.Filter(filtersYaml, filterConfig);
-        const files = await getChangedFiles(token, base, ref, initialFetchDepth);
-        core.info(`Detected ${files.length} changed files`);
-        const results = filter.match(files);
-        exportResults(results, listFiles);
+        const changedFiles = await getChangedFiles(token, base, ref, initialFetchDepth);
+        core.info(`Detected ${changedFiles.length} changed files`);
+        const outputFiles = listFiles === 'none' ? [] : await git.listAllFilesAsAdded();
+        exportResults(listFiles, filter.match(changedFiles), filter.match(outputFiles));
     }
     catch (error) {
         core.setFailed(getErrorMessage(error));
@@ -770,10 +770,10 @@ async function getChangedFilesFromApi(token, pullRequest) {
         core.endGroup();
     }
 }
-function exportResults(results, format) {
+function exportResults(format, resultsChanges, resultsFiles) {
     core.info('Results:');
     const changes = [];
-    for (const [key, files] of Object.entries(results)) {
+    for (const [key, files] of Object.entries(resultsChanges)) {
         const value = files.length > 0;
         core.startGroup(`Filter ${key} = ${value}`);
         if (files.length > 0) {
@@ -789,12 +789,14 @@ function exportResults(results, format) {
         core.setOutput(key, value);
         core.setOutput(`${key}_count`, files.length);
         if (format !== 'none') {
-            const filesValue = serializeExport(files, format);
-            core.setOutput(`${key}_files`, filesValue);
+            const changedFiles = serializeExport(files, format);
+            const allFiles = serializeExport(resultsFiles[key], format);
+            core.setOutput(`${key}_changes`, changedFiles);
+            core.setOutput(`${key}_files`, allFiles);
         }
         core.endGroup();
     }
-    if (results['changes'] === undefined) {
+    if (resultsChanges['changes'] === undefined) {
         const changesJson = JSON.stringify(changes);
         core.info(`Changes output set to ${changesJson}`);
         core.setOutput('changes', changesJson);
